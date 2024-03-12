@@ -364,7 +364,8 @@ class Sonar:
         sidescan_df["longitude"] = self._x2lon(sidescan_df["x"])
         sidescan_df["latitude"] = self._y2lat(sidescan_df["y"])
         
-        return(sidescan_df)
+        return sidescan_df
+    
     
     def _interp_water(self, water, depth, out_len):
         x = np.linspace(0, depth, num=out_len)
