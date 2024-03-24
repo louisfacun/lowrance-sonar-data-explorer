@@ -18,4 +18,5 @@
   - Coordinates correction
   - Others
 - Apply PINGMAPPER's methods to remove water column.
-- Apply segmentation (mapping of substrate) PINGMAPPER's river model. 
+- Apply segmentation (mapping of substrate) PINGMAPPER's river model.
+- Georeferenced track points as shapefile.
