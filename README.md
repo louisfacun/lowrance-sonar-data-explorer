@@ -1,6 +1,7 @@
 # Lowrance Sonar Data Explorer
 
 ## Quick start
+0. Run `pip install -r requirements.txt`.
 1. Edit `SL2` file path at `default.yaml`.
 2. Run `run_lowmapper.ipynb` via `Run All`.
 3. Folder outputs are at `runs` folder.
