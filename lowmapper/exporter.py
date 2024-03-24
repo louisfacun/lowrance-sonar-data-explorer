@@ -55,24 +55,48 @@ class Exporter:
         self.export_sidescan_image()
 
 
+    # TODO: move processing to separate file
+    def process_different_zoom_levels(self, df):
+        max_range_value = df['max_range'].max()
+        """Used to resize the `primary` and `downscan` sonar images to match
+        the different zoom levels; based on max_range value.
+        """
+        max_range_ratio = np.array(df['max_range'] / max_range_value)
+        image = np.stack(df["frames"])
+
+        def downsample_row(row, ratio):
+            indices = np.linspace(0, len(row)-1, int(len(row)*ratio)).astype(int)
+            return row[indices]
+
+        # Downsample each row and find the length of the longest row
+        # note: this is faster than using img libraries resize as we are always
+        # downsampling
+        downsampled_rows = [downsample_row(row, ratio) for row, ratio in zip(image, max_range_ratio)]
+        max_length = max(len(row) for row in downsampled_rows)
+
+        # Pad the downsampled rows with zeros to match the length of the longest row
+        image_resized = np.array([np.pad(row, (0, max_length - len(row)), 'constant') for row in downsampled_rows])
+
+        return image_resized.transpose()
+    
+
     def export_primary_image(self):
-        image_data = np.array(self.primary_df['frames'].tolist(), dtype=np.uint8)
-        img = Image.fromarray(image_data)
-        img = img.rotate(90, expand=True)
+        image = self.process_different_zoom_levels(self.primary_df)
+        img = Image.fromarray(image)
         img.save(f'{self.image_export_path}/primary.jpg')
 
 
     def export_downscan_image(self):
-        image_data = np.array(self.downscan_df['frames'].tolist(), dtype=np.uint8)
-        img = Image.fromarray(image_data)
-        img = img.rotate(90, expand=True)
+        image = self.process_different_zoom_levels(self.downscan_df)
+        img = Image.fromarray(image)
         img.save(f'{self.image_export_path}/downscan.jpg')
 
 
     def export_sidescan_image(self):
-        image_data = np.array(self.sidescan_df['frames'].tolist(), dtype=np.uint8)
-        img = Image.fromarray(image_data)
-        img = img.rotate(90, expand=True)
+        image = np.stack(self.sidescan_df['frames'])
+        image = image.transpose()
+        img = Image.fromarray(image)
+       
         img.save(f'{self.image_export_path}/sidescan.jpg')
 
 
