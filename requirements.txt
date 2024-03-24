@@ -1,1 +1,6 @@
-pyyaml
+matplotlib
+numpy
+pandas
+pillow
+PyYAML==6.0.1
+rasterio==1.3.9
