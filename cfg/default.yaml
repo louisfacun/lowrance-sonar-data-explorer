@@ -1,0 +1,8 @@
+# File
+path: examples/Sonar_2023-09-13_12.20.32.sl2
+
+# TODO
+# Saving
+#save_path: saves
+#save_csv: True # Enable saving of ping data to csv
+#save_csv_all: True # Save all channels into one

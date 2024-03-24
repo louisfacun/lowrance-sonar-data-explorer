@@ -1,8 +1,8 @@
+import math
 import numpy as np
 import pandas as pd
-import math
 
-#dtype for '.sl2' files (144 bytes)
+# dtype for '.sl2' files (144 bytes)
 sl2_frame_dtype = np.dtype([
     ("first_byte", "<u4"),
     ("frame_version", "<u4"),
@@ -47,7 +47,7 @@ sl2_frame_dtype = np.dtype([
     ("seconds", "<u4")
 ])
 
-#dtype for '.sl3' files (168 bytes)
+# dtype for '.sl3' files (168 bytes)
 sl3_frame_dtype = np.dtype([
     ("first_byte", "<u4"),
     ("frame_version", "<u4"),
@@ -136,8 +136,14 @@ class Sonar:
                              "bottom_index", "frames"]
         
         self.augment_coords = augment_coords
+
         if augment_coords:
-            self.vars_to_keep = self.vars_to_keep + ["x_augmented", "y_augmented", "longitude_augmented", "latitude_augmented"]
+            self.vars_to_keep = self.vars_to_keep + [
+                "x_augmented", 
+                "y_augmented", 
+                "longitude_augmented", 
+                "latitude_augmented"
+            ]
 
         self._read_bin()
         self._parse_header()
@@ -188,6 +194,14 @@ class Sonar:
     
 
     def _x2lon(self, x):
+        """
+            POLAR_EARTH_RADIUS = 6356752.3142;
+
+            longitude = Easting / POLAR_EARTH_RADIUS * (180/M_PI);
+            
+            https://wiki.openstreetmap.org/wiki/SL2
+
+        """
         return(x/6356752.3142*(180/math.pi))
 
 
@@ -320,7 +334,7 @@ class Sonar:
         """Extract the raw sonar image for a specific channel.
         
         Args:
-            channel (str): The channel name. Valid channels are: "primary", "secondary", "downscan", "sidescan
+            channel (str): The channel name. Valid channels are: "primary", "secondary", "downscan", "sidescan".
 
         Returns:
             np.ndarray: A 2D array of the raw sonar image
@@ -366,7 +380,7 @@ class Sonar:
         
         return sidescan_df
     
-    
+
     def _interp_water(self, water, depth, out_len):
         x = np.linspace(0, depth, num=out_len)
         xp = np.linspace(0, depth, num=len(water))
