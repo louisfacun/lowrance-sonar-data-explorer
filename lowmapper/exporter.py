@@ -1,52 +1,64 @@
+import os
+
 import numpy as np
 from PIL import Image
 import rasterio
 from rasterio.transform import from_bounds
 
 class Exporter:
-    def __init__(self, sonar, name):
+    def __init__(self, sonar, project_name):
         self.sonar = sonar
-        self.sonar_df = sonar.df
+        self.sonar_df = sonar.df # all_channels
+        self.project_name = project_name
+        self.runs_folder = 'runs'
 
-        # TODO: put the creation of directory here
-        # csv
-        self.csv_export_path = f'runs/{name}/csvs'
+        self.sub_folders = ['csvs', 'sonograms', 'sidescan']
+        self.create_folder_if_not_exists()
+
         self.primary_df = self.sonar_df.query(f"survey == 'primary'")
         self.downscan_df = self.sonar_df.query(f"survey == 'downscan'")
         self.sidescan_df = self.sonar_df.query(f"survey == 'sidescan'")
 
-        # sonograms
-        self.image_export_path = f'runs/{name}/sonograms'
+        # Define export paths
+        self.csv_filenames = {
+            'sonar_df': 'all_channels.csv',
+            'primary_df': 'primary.csv',
+            'downscan_df': 'downscan.csv',
+            'sidescan_df': 'sidescan.csv'
+        }
 
-        # side scan
-        self.sidescan_export_path = f'runs/{name}/sidescan'
-
-    # CSV
-    def export_all_to_csv(self):
-        self.sonar_df.to_csv(
-            f'{self.csv_export_path}/all_channels.csv')
+        # CSVs
+        self.csv_export_path = os.path.join(
+            self.runs_folder, self.project_name, self.sub_folders[0])
         
-
-    def export_primary_to_csv(self):
-        self.primary_df.to_csv(
-            f'{self.csv_export_path}/primary.csv')
+        # Images (plots, sonograms, etc.)
+        self.image_export_path = os.path.join(
+            self.runs_folder, self.project_name, self.sub_folders[1])
         
-
-    def export_downscan_to_csv(self):
-        self.downscan_df.to_csv(
-            f'{self.csv_export_path}/downscan.csv')
-        
-
-    def export_sidescan_to_csv(self):
-        self.sidescan_df.to_csv(
-            f'{self.csv_export_path}/sidescan.csv')
+        # For side scan images (commonly high res and georeferenced)
+        self.sidescan_export_path = os.path.join(
+            self.runs_folder, self.project_name, self.sub_folders[2])
 
 
-    def export_multiple_to_csv(self):
-        self.export_all_to_csv()
-        self.export_primary_to_csv()
-        self.export_downscan_to_csv()
-        self.export_sidescan_to_csv()
+    def create_folder_if_not_exists(self):
+        project_folder = os.path.join(self.runs_folder, self.project_name)
+
+        # Create project folder if it doesn't exist
+        if not os.path.exists(project_folder):
+            os.makedirs(project_folder)
+
+        # Create subfolders if they don't exist
+        for sub_folder in self.sub_folders:
+            folder_path = os.path.join(project_folder, sub_folder)
+            if not os.path.exists(folder_path):
+                os.makedirs(folder_path)
+
+
+    # CSVs
+    def export_data_to_csv(self):
+        for dataframe, filename in self.csv_filenames.items():
+            df = getattr(self, dataframe)  # Access DataFrame using its name
+            df.to_csv(os.path.join(self.csv_export_path, filename))
 
     # Images
     def export_all_images(self):
@@ -57,15 +69,16 @@ class Exporter:
 
     # TODO: move processing to separate file
     def process_different_zoom_levels(self, df):
-        max_range_value = df['max_range'].max()
         """Used to resize the `primary` and `downscan` sonar images to match
         the different zoom levels; based on max_range value.
         """
+        max_range_value = df['max_range'].max()
         max_range_ratio = np.array(df['max_range'] / max_range_value)
         image = np.stack(df["frames"])
 
         def downsample_row(row, ratio):
-            indices = np.linspace(0, len(row)-1, int(len(row)*ratio)).astype(int)
+            indices = np.linspace(0, len(row)-1, int(len(row) *ratio)).astype(int)
+            #indices = np.linspace(0, len(row)-1, int(len(row) * (1 - ratio))).astype(int)
             return row[indices]
 
         # Downsample each row and find the length of the longest row
@@ -73,6 +86,7 @@ class Exporter:
         # downsampling
         downsampled_rows = [downsample_row(row, ratio) for row, ratio in zip(image, max_range_ratio)]
         max_length = max(len(row) for row in downsampled_rows)
+        #max_length = max_frame_size[0]
 
         # Pad the downsampled rows with zeros to match the length of the longest row
         image_resized = np.array([np.pad(row, (0, max_length - len(row)), 'constant') for row in downsampled_rows])
@@ -108,7 +122,7 @@ class Exporter:
             data["frames"]
         )]
         dist_stack = np.stack(dist)
-        sidescan_z = self.sonar.image("sidescan")
+        sidescan_z = self.sonar.image("sidescan") # Todo: rename, not image
 
         sidescan_x = np.expand_dims(data["x"], axis=1) + dist_stack * np.cos(
             np.expand_dims(data["gps_heading"], axis=1))
