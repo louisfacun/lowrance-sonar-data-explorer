@@ -10,6 +10,7 @@
 - Save ping records as .csv files all channels and each channels.
 - Save high res sonograms for each channels.
 - Save georeferenced sidescan as PNG and GeoTif images.
+- Apply Empirical Gain Normalization with Min-Max and Percentile Clip stretch (PingMapper).
 
 ## TODO
 - Apply preprocessing from PINGMAPPER's methods:"
