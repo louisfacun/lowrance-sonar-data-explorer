@@ -60,6 +60,7 @@ class Exporter:
             df = getattr(self, dataframe)  # Access DataFrame using its name
             df.to_csv(os.path.join(self.csv_export_path, filename))
 
+
     # Images
     def export_all_images(self):
         self.export_primary_image()
