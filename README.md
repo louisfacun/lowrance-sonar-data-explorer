@@ -10,16 +10,16 @@
 
 | Features | Implemented |
 | --- | ----------- |
-| Decode Lowrance® (tested on SL2) | Done |
-| Export all ping records from .DAT and .SON files to .CSV. | Done | 
-| Automatically detect depth (i.e. Zheng et al. 2021) and shadows in side scan channels. | Using sensor & Shadow not yet |
-| Correct sonar backscatter with Empiracle Gain Normalization. | Done |
-| Export un-rectified sonar tiles with water column present (WCP) AND/OR export un-rectified sonograms with water column removed (WCR) using Lowrance depth estimates OR automated depth detections. | WCP Done, WCR need to fix |
+| Decode Lowrance® (tested on SL2) | **Done** |
+| Export all ping records from .DAT and .SON files to .CSV. | **Done** | 
+| Automatically detect depth (i.e. Zheng et al. 2021) and shadows in side scan channels. | **Done** (using sensor) |
+| Correct sonar backscatter with Empiracle Gain Normalization. | **Done** |
+| Export un-rectified sonar tiles with water column present (WCP) AND/OR export un-rectified sonograms with water column removed (WCR) using Lowrance depth estimates OR automated depth detections. | **Done** (`WCP`); for fixing (`WCR`) |
 | Export speed corrected un-rectified sonograms. |
 | Smooth and interpolate GPS track points. |
-Export georectified WCP (spatially inaccurate due to presence of water column) AND/OR WCR sonar imagery for use in GIS w/wo shadows removed. | WCP Done, WCR not yet |
+Export georectified WCP (spatially inaccurate due to presence of water column) AND/OR WCR sonar imagery for use in GIS w/wo shadows removed. | **Done** (`WCP`); for fixing (`WCR`) |
 | Mosaic georectified sonar imagery. | |
-| Automatically segment and classify substrate patches. | |
+| Automatically segment and classify substrate patches. | *ongoing* |
 
 
 # Added Features
