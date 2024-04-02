@@ -38,6 +38,11 @@ class Exporter:
             self.project_name,
             'shapefiles'
         )
+        self.plots_folder = os.path.join(
+            self.save_path, 
+            self.project_name,
+            'plots'
+        )
         if not os.path.exists(self.csvs_folder):
             os.makedirs(self.csvs_folder)
         if not os.path.exists(self.sonograms_folder):
@@ -46,6 +51,8 @@ class Exporter:
             os.makedirs(self.sidescan_folder)
         if not os.path.exists(self.shapefiles_folder):
             os.makedirs(self.shapefiles_folder)
+        if not os.path.exists(self.plots_folder):
+            os.makedirs(self.plots_folder)
 
             
     def export_csvs(self, csvs):
@@ -125,3 +132,8 @@ class Exporter:
     def export_points_shapefile(self, gdf):
         print('Exporting points shapefile...')
         gdf.to_file(f'{self.shapefiles_folder}/points.shp')
+
+
+    def export_bathy_map(self, plt):
+        print('Exporting bathy map...')
+        plt.savefig(f'{self.plots_folder}/bathy_map.png')

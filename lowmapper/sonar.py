@@ -7,9 +7,10 @@ import numpy as np
 import pandas as pd
 from PIL import Image
 from shapely.geometry import Point
-
+from scipy.interpolate import griddata
 from .exporter import Exporter
 from .utils import x_to_longitude, y_to_latitude
+import matplotlib.pyplot as plt
 
 # dtype for '.sl2' files (144 bytes)
 sl2_frame_dtype = np.dtype([
@@ -515,3 +516,37 @@ class Sonar:
         )
         exporter = Exporter(self.config)
         exporter.export_points_shapefile(gdf)
+        
+    
+    def bathy_map(self):
+        sidescan_df = self.sidescan_df()
+
+        # Define grid for interpolation
+        x = np.linspace(sidescan_df['longitude'].min(), 
+                        sidescan_df['longitude'].max(), 1000)
+        y = np.linspace(sidescan_df['latitude'].min(), 
+                        sidescan_df['latitude'].max(), 1000)
+        X, Y = np.meshgrid(x, y)
+
+        # Interpolate water depths
+        Z = griddata(
+            (sidescan_df['longitude'], sidescan_df['latitude']), 
+            sidescan_df['water_depth'], 
+            (X, Y), 
+            method='linear'
+        )
+
+        plt.figure(figsize=(10, 8))
+        plt.contourf(X, Y, Z, levels=20, cmap='RdYlGn_r')
+        plt.colorbar(label='Water Depth (m)')
+        #plt.contour(X, Y, Z, levels=10, colors='black', linestyles='solid')
+        plt.scatter(sidescan_df['longitude'], sidescan_df['latitude'], c='black', s=10)
+        plt.xlabel('Longitude')
+        plt.ylabel('Latitude')
+        plt.title('Bathymetry Map')
+        plt.grid(True)
+
+        exporter = Exporter(self.config)
+        exporter.export_bathy_map(plt)
+
+        plt.close()
