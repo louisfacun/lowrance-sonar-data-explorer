@@ -6,6 +6,7 @@ from PIL import Image
 import rasterio
 from rasterio.transform import from_bounds
 
+
 class Exporter:
     def __init__(self, config):
         #self.sonar = sonar
@@ -30,7 +31,7 @@ class Exporter:
         self.sidescan_folder = os.path.join(
             self.save_path, 
             self.project_name,
-            'sidescan'
+            'georeferenced'
         )
         if not os.path.exists(self.csvs_folder):
             os.makedirs(self.csvs_folder)
@@ -87,6 +88,7 @@ class Exporter:
             sonograms: dict with key(filename), value(image numpy) of WCR AND WCP
         """
         print('Exporting `sidescan` channel sonogram(s)...')
+        # TODO: put looping outside
         for file_name, image in sonograms.items():
             img = Image.fromarray(image)
             img.save(f'{self.sonograms_folder}/{file_name}.jpg')
@@ -111,53 +113,14 @@ class Exporter:
         img = Image.fromarray(image)
         img.save(f'{self.sonograms_folder}/downscan.jpg')
 
-    # def create_folder_if_not_exists(self):
-    #     project_folder = os.path.join(self.runs_folder, self.project_name)
 
-    #     # Create project folder if it doesn't exist
-    #     if not os.path.exists(project_folder):
-    #         os.makedirs(project_folder)
-
-    #     # Create subfolders if they don't exist
-    #     # for sub_folder in self.sub_folders:
-    #     #     folder_path = os.path.join(project_folder, sub_folder)
-    #     #     if not os.path.exists(folder_path):
-    #     #         os.makedirs(folder_path)
-
-    # CSVs
-    # def export_data_to_csv(self):
-    #     for dataframe, filename in self.csv_filenames.items():
-    #         df = getattr(self, dataframe)  # Access DataFrame using its name
-    #         df.to_csv(os.path.join(self.csv_export_path, filename))
-
-
-    # # Images
-    # def export_all_images(self):
-    #     self.export_primary_image()
-    #     self.export_downscan_image()
-    #     self.export_sidescan_image()
-
-
-    # def export_primary_image(self):
-    #     image = self.process_different_zoom_levels(self.primary_df)
-    #     img = Image.fromarray(image)
-    #     img.save(f'{self.image_export_path}/primary.jpg')
-
-
-    # def export_downscan_image(self):
-    #     image = self.process_different_zoom_levels(self.downscan_df)
-    #     img = Image.fromarray(image)
-    #     img.save(f'{self.image_export_path}/downscan.jpg')
-
-
-
-    def export_georeferenced_sidescan(self, image_np, bounds):
+    def export_georeferenced_sidescan(self, image_np, file_name, bounds):
         print('Exporting georeferenced sidescan(s)...')
         image = Image.fromarray(image_np, 'RGBA')
         width, height = image.size
         
         # Save the image as PNG with transparency
-        image.save(f'{self.sidescan_folder}/sidescan.png', 'PNG')
+        image.save(f'{self.sidescan_folder}/{file_name}.png', 'PNG')
 
         # GEOTIF
         min_long, max_long, min_lat, max_lat = bounds
@@ -165,7 +128,7 @@ class Exporter:
         transform = from_bounds(min_long, min_lat, max_long, max_lat, width, height)
 
         with rasterio.open(
-            f'{self.sidescan_folder}/sidescan.tif',
+            f'{self.sidescan_folder}/{file_name}.tif',
             'w',
             driver='GTiff',
             height=image_np.shape[0],

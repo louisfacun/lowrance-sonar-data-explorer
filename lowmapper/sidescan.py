@@ -215,21 +215,28 @@ class SideScan:
         exporter = Exporter(self.config)
         exporter.export_sidescan_sonograms(sonograms)
 
+        return sonograms # to be optionally pass to georeferencing
+    
 
-    def georeferenced(self):
+    def georeference(self, sonograms):
         "export georeferenced"
-
-        raw_image = self.image
-        georeferenced_image_np, bounds = self._create_georeferenced(raw_image)
-
+        """
+            args: output from sonograms (egned and/or stretched)
+        """
+    
         exporter = Exporter(self.config)
-        exporter.export_georeferenced_sidescan(
-            georeferenced_image_np,
-            bounds
-        )
+
+        for file_name, image in sonograms.items():
+            georeferenced_image, bounds = self._create_georeference(image)
+
+            exporter.export_georeferenced_sidescan(
+                georeferenced_image,
+                file_name,
+                bounds
+            )
 
 
-    def _create_georeferenced(self, image, resolution=1):
+    def _create_georeference(self, image, resolution=1):
         """Georeference the sidescan image.
 
         Args:
