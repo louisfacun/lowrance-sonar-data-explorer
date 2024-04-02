@@ -1,6 +1,12 @@
+# Original code by 'sonarlight'.
+# Modified here
+
 import math
 import numpy as np
 import pandas as pd
+
+from .exporter import Exporter
+from .utils import x_to_longitude, y_to_latitude
 
 # dtype for '.sl2' files (144 bytes)
 sl2_frame_dtype = np.dtype([
@@ -13,18 +19,18 @@ sl2_frame_dtype = np.dtype([
     ("unknown24", "<f4"),
     ("frame_size", "<u2"),
     ("prev_frame_size", "<u2"),
-    ("survey_type", "<u2"),
-    ("packet_size", "<u2"),
-    ("id", "<u4"),
-    ("min_range", "<f4"),
-    ("max_range", "<f4"),
+    ("survey_type", "<u2"), # channels
+    ("packet_size", "<u2"), # Size of sounding/bounce data in bytes.
+    ("id", "<u4"), # used to identify which sensor recordings belong together starting at 0 and counting up
+    ("min_range", "<f4"), #UpperLimit [feet]. Divide by 3.2808399 to get meters.
+    ("max_range", "<f4"), #LowerLimit [feet]. Divide by 3.2808399 to get meters.
     ("unknown48", "<f4"),
     ("unknown52", "<u1"),
-    ("frequency_type", "<u2"),
+    ("frequency_type", "<u2"), #Frequency: 0-200khz,1-50khz etc.
     ("unknown55", "<u1"),
     ("unknown56", "<f4"),
     ("hardware_time", "<u4"),
-    ("water_depth", "<f4"),
+    ("water_depth", "<f4"), #WaterDepth [feet]. Divide by 3.2808399 to get meters.
     ("unknown68", "<f4"),
     ("unknown72", "<f4"),
     ("unknown76", "<f4"),
@@ -33,14 +39,14 @@ sl2_frame_dtype = np.dtype([
     ("unknown88", "<f4"),
     ("unknown92", "<f4"),
     ("unknown96", "<f4"),
-    ("gps_speed", "<f4"),
-    ("water_temperature", "<f4"),
-    ("x", "<i4"),
-    ("y", "<i4"),
-    ("water_speed", "<f4"),
-    ("gps_heading", "<f4"),
-    ("gps_altitude", "<f4"),
-    ("magnetic_heading", "<f4"),
+    ("gps_speed", "<f4"), #Speed [knots]. Divide by 1.94385 to get m/s . Based on GPS NMEA.
+    ("water_temperature", "<f4"), #WaterTemperature [Celsius].
+    ("x", "<i4"), #Easting [mercator meters] (Position X)
+    ("y", "<i4"), #Northing [mercator meters] (Position Y)
+    ("water_speed", "<f4"), #WaterSpeed [knots]. Divide by 1.94385 to get m/s . 
+    ("gps_heading", "<f4"), #Track/Course-Over-Ground in radians. Taken from GPS NMEA data.
+    ("gps_altitude", "<f4"), #Altitude [feet]. Divide by 3.2808399 to get meters. Taken from GPS NMEA data.
+    ("magnetic_heading", "<f4"), #Heading in radians. Taken from GPS NMEA data.
     ("flags", "<u2"),
     ("unknown132", "<u2"),
     ("unknown136", "<f4"),
@@ -107,42 +113,55 @@ class Sonar:
     '''
     
     def __init__(self, 
-        path: str, 
-        clean: bool = True, 
-        augment_coords: bool = False
-    ):
+                 path,
+                 config,
+                 clean=True, 
+                 augment_coords=False):
         self.path = path
+        self.config = config
         self.file_header_size = 8
         self.extension = path.split(".")[-1]
         self.frame_header_size = 168 if "sl3" in self.extension else 144
         self.frame_dtype = sl3_frame_dtype if "sl3" in self.extension else sl2_frame_dtype
 
-        self.supported_channels = ["primary", "secondary", "downscan", "sidescan"]
+        self.supported_channels = [
+            'primary', 
+            'secondary', 
+            'downscan', 
+            'sidescan',
+        ]
         self.valid_channels = []
         self.valid_channels_records = []
         
-        self.survey_dict = {0: 'primary', 1: 'secondary', 2: 'downscan',
-                            3: 'left_sidescan', 4: 'right_sidescan', 5: 'sidescan'}
+        self.channels = {
+            0: 'primary', 1: 'secondary', 2: 'downscan',
+            3: 'left_sidescan', 4: 'right_sidescan', 5: 'sidescan'
+        }
         
-        self.frequency_dict = {0: "200kHz", 1: "50kHz", 2: "83kHz",
-                               3: "455kHz", 4: "800kHz", 5: "38kHz", 
-                               6: "28kHz", 7: "130kHz_210kHz", 8: "90kHz_150kHz", 
-                               9: "40kHz_60kHz", 10: "25kHz_45kHz"}
+        self.frequencies = {
+            0: '200kHz', 1: '50kHz', 2: '83kHz',
+            3: '455kHz', 4: '800kHz', 5: '38kHz', 
+            6: '28kHz', 7: '130kHz_210kHz', 8: '90kHz_150kHz', 
+            9: '40kHz_60kHz', 10: '25kHz_45kHz'
+        }
         
-        self.vars_to_keep = ["id", "survey", "datetime",
-                             "x", "y", "longitude", "latitude", 
-                             "min_range", "max_range", "water_depth", 
-                             "gps_speed", "gps_heading", "gps_altitude", 
-                             "bottom_index", "frames"]
+        self.attributes = [
+            'id', 'survey', 'datetime',
+            'x', 'y', 'longitude', 'latitude', 
+            'min_range', 'max_range', 'water_depth', 
+            'gps_speed', 'gps_heading', 'gps_altitude',
+            'water_temperature',
+            'bottom_index', 'frames'
+        ]
         
         self.augment_coords = augment_coords
 
         if augment_coords:
-            self.vars_to_keep = self.vars_to_keep + [
-                "x_augmented", 
-                "y_augmented", 
-                "longitude_augmented", 
-                "latitude_augmented"
+            self.attributes = self.attributes + [
+                'x_augmented', 
+                'y_augmented', 
+                'longitude_augmented', 
+                'latitude_augmented',
             ]
 
         self._read_bin()
@@ -153,8 +172,8 @@ class Sonar:
 
         if augment_coords:
             self._coordinate_augmentation()
-            self.df["longitude_augmented"] = self._x2lon(self.df["x_augmented"])
-            self.df["latitude_augmented"] = self._y2lat(self.df["y_augmented"])
+            self.df["longitude_augmented"] = x_to_longitude(self.df["x_augmented"])
+            self.df["latitude_augmented"] = y_to_latitude(self.df["y_augmented"])
 
         if clean:
             self._select()
@@ -165,68 +184,54 @@ class Sonar:
 
 
     def _read_bin(self):
-        with open(self.path, "rb") as f:
+        with open(self.path, 'rb') as f:
             blob = f.read()
         self.header = blob[:self.file_header_size]
         self.buffer = blob[self.file_header_size:]
     
 
     def _parse_header(self):
-        self.version, self.device_id, self.blocksize, self.reserved = np.frombuffer(self.header, dtype="int16")
+        self.version, self.device_id, self.blocksize, self.reserved = np.frombuffer(self.header, dtype='int16')
         
 
     def _decode(self):
         position = 0
         frame_header_list = []
-        frame_size_slice = slice(8, 10) if "sl3" in self.extension else slice(28, 30)
+        frame_size_slice = slice(8, 10) if 'sl3' in self.extension else slice(28, 30)
 
         while (position < len(self.buffer)):
             frame_head = self.buffer[position:(position+self.frame_header_size)]
-            frame_size = int.from_bytes(frame_head[frame_size_slice], "little", signed = False)
+            frame_size = int.from_bytes(
+                frame_head[frame_size_slice], 'little', signed=False)
             
             position += frame_size
             
             if(position < len(self.buffer)):
                 frame_header_list.append(frame_head)
         
-        self.df = pd.DataFrame(np.frombuffer(b''.join(frame_header_list), dtype=self.frame_dtype))
-        self.df["frames"] = [np.frombuffer(self.buffer[(i+self.frame_header_size):(i+p)], dtype="uint8") for i, p in zip(self.df["first_byte"], self.df["frame_size"])]        
-    
-
-    def _x2lon(self, x):
-        """
-            POLAR_EARTH_RADIUS = 6356752.3142;
-
-            longitude = Easting / POLAR_EARTH_RADIUS * (180/M_PI);
-            
-            https://wiki.openstreetmap.org/wiki/SL2
-
-        """
-        return(x/6356752.3142*(180/math.pi))
-
-
-    def _y2lat(self, y):
-        return(((2*np.arctan(np.exp(y/6356752.3142)))-(math.pi/2))*(180/math.pi))
+        self.df = pd.DataFrame(
+            np.frombuffer(b''.join(frame_header_list), dtype=self.frame_dtype))
+        self.df['frames'] = [np.frombuffer(self.buffer[(i+self.frame_header_size):(i+p)], dtype='uint8') for i, p in zip(self.df['first_byte'], self.df['frame_size'])]        
     
 
     def _bottom_index(self):
-        frame_len = np.array([len(i) for i in self.df["frames"]])
-        frame_bottom_index = ((frame_len/(self.df["max_range"]-self.df["min_range"]))*self.df["water_depth"]).astype("int32")
+        frame_len = np.array([len(i) for i in self.df['frames']])
+        frame_bottom_index = ((frame_len/(self.df['max_range']-self.df['min_range']))*self.df['water_depth']).astype('int32')
         return(frame_bottom_index)
     
     
     def _process(self):
         self.df[["water_depth", "min_range", "max_range", "gps_altitude"]] /= 3.2808399 #feet to meter
         self.df["gps_speed"] *=  0.5144 #knots to m/s
-        self.df["survey"] = [self.survey_dict.get(i, "unknown") for i in self.df["survey_type"]]
-        self.df["frequency"] = [self.frequency_dict.get(i, "unknown") for i in self.df["frequency_type"]]
+        self.df["survey"] = [self.channels.get(i, "unknown") for i in self.df["survey_type"]]
+        self.df["frequency"] = [self.frequencies.get(i, "unknown") for i in self.df["frequency_type"]]
         self.df["seconds"] /= 1000 #milliseconds to seconds
         hardware_time_start = self.df["hardware_time"][0]
         self.df["datetime"] = pd.to_datetime(hardware_time_start+self.df["seconds"], unit='s')
         self.df["bottom_index"] = self._bottom_index()
         self.frame_version = self.df["frame_version"].iloc[0]
-        self.df["longitude"] = self._x2lon(self.df["x"])
-        self.df["latitude"] = self._y2lat(self.df["y"])
+        self.df["longitude"] = x_to_longitude(self.df["x"])
+        self.df["latitude"] = y_to_latitude(self.df["y"])
 
 
     def _coordinate_augmentation(self):
@@ -298,7 +303,7 @@ class Sonar:
 
 
     def _select(self):
-        self.df = self.df[self.vars_to_keep]
+        self.df = self.df[self.attributes]
 
 
     def _describe(self):
@@ -309,7 +314,7 @@ class Sonar:
 
       
     def _drop_zero_depth(self):
-        self.df = self.df[self.df["water_depth"] > 0]
+        self.df = self.df[self.df['water_depth'] > 0]
 
 
     def _drop_unknown_channels(self):
@@ -329,6 +334,10 @@ class Sonar:
         
         return(base_string)
         
+    
+    def sidescan_df(self):
+        return self.df.query("survey == 'sidescan'")
+    
 
     def image(self, channel):
         """Extract the raw sonar image for a specific channel as numpy array.
@@ -349,6 +358,24 @@ class Sonar:
         return(np.stack(self.df.query(f"survey == '{channel}'")["frames"]))            
 
 
+    def depth(self, channel):
+        """Extract the depth data for a specific channel as numpy array.
+        
+        Args:
+            channel (str): The channel name. Valid channels are: "primary", "secondary", "downscan", "sidescan".
+
+        Returns:
+            np.ndarray: A 2D array of the depth data
+
+        Raises:
+            ValueError: If the channel name is not valid or no data for that channel
+        """
+        
+        if channel not in self.valid_channels:
+            raise ValueError("Wrong channel name or no data for that channel")
+        
+        return(np.stack(self.df.query(f"survey == '{channel}'")["water_depth"]))
+               
     # def sidescan_xyz(self) -> pd.DataFrame:
     #     '''Extract georeferenced sidescan data as XYZ coordinates'''
 
@@ -375,8 +402,8 @@ class Sonar:
     #                                 "y": sidescan_y.ravel(),
     #                                 "z": sidescan_z.ravel()})
 
-    #     sidescan_df["longitude"] = self._x2lon(sidescan_df["x"])
-    #     sidescan_df["latitude"] = self._y2lat(sidescan_df["y"])
+    #     sidescan_df["longitude"] = x_to_longitude(sidescan_df["x"])
+    #     sidescan_df["latitude"] = y_to_latitude(sidescan_df["y"])
         
     #     return sidescan_df
     
@@ -430,3 +457,22 @@ class Sonar:
         bottom_intensity = np.array([f[i] for f, i in zip(data["frames"], data["bottom_index"])])
                 
         return(bottom_intensity)
+    
+    def csvs(self):
+        """EXPORT CSVS"""
+        all_df = self.df
+        primary_df = self.df.query(f"survey == 'primary'")
+        downscan_df = self.df.query(f"survey == 'downscan'")
+        sidescan_df = self.df.query(f"survey == 'sidescan'")
+
+        # Define csv export file names
+        # Filename : DataFrame
+        csvs = {
+            'all': all_df,
+            'primary': primary_df,
+            'downscan': downscan_df,
+            'sidescan': sidescan_df,
+        }
+
+        exporter = Exporter(self.config)
+        exporter.export_csvs(csvs)

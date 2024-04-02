@@ -1,8 +1,58 @@
 # File
-path: examples/Sonar_2023-09-13_12.20.32.sl2
+sonar_path: examples/Sonar_2023-09-12_09.04.57.sl2
+save_path: outputs
 
-# TODO
+filename_as_project_name: True # Use <filename>.sl2 as project name
+project_name: Sonar # If false above
+
+#Default !
+#overwrite_project: True # Delete previous project outputs
+
+# TODO LAHAT NG NASA BABA PA
 # Saving
 #save_path: saves
 #save_csv: True # Enable saving of ping data to csv
 #save_csv_all: True # Save all channels into one
+
+# Position corrections
+transducer_x_offset: 0,0 # Transducer x offset in meters
+transducer_y_offset: 0,0 # Transducer y offset in meters
+
+# Sonar intensity corrections
+egn: True
+egn_stretch: 2 # None, 1-min-max, 2-percent clip
+egn_stretch_factor_min: 25 # for percent clip only
+egn_stretch_factor_max: 75 # for percent clip only
+
+# Sonogram tile exports, for sidescan only?
+water_column_present: True
+water_column_removed: True
+sonogram_img_format: png
+
+# Speed corrected sonogram exports
+export_speed_corrected: False
+speed_correction: 0
+
+# Depth detection and shadow removal
+remove_shadows: 0 # 0-false, 1-removeall shadows, 2-remove only bank shadows
+depth_detection_method: 0 # 0-sensor, 1-zheng et al. 2=thresholding
+smooth_depth: True # 0-false, 1-true
+adjust_depth: 0 # in meters, positive=increase, 
+plot_bedpicks: 0 # 0-false, 1-true, hmm ano to?
+
+# Exports
+pixel_res: 1 # Meter per pixel
+export_georef_sidescan: gtiff # false, gtiff, png
+export_sidescan_substrates_map: True # false, gtiff, png, shapefile?
+
+# georeferenced sidescan
+sidescan_wcp: True
+sidescan_wcr: True
+colormap: hotdog
+
+# Substrate mapping
+map_substrate: False
+subtrate_plots: false
+substrate_raster: False
+substrate_polygon: False
+classification_method: max
