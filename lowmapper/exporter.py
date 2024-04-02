@@ -84,13 +84,32 @@ class Exporter:
     def export_sidescan_sonograms(self, sonograms):
         """
         Args:
-            sonograms: dict with key(filename), value(image numpy)
+            sonograms: dict with key(filename), value(image numpy) of WCR AND WCP
         """
-        print('Exporting sonograms(s)...')
+        print('Exporting `sidescan` channel sonogram(s)...')
         for file_name, image in sonograms.items():
             img = Image.fromarray(image)
             img.save(f'{self.sonograms_folder}/{file_name}.jpg')
 
+
+    def export_primary_sonogram(self, image):
+        """
+        Args:
+            image: numpy
+        """
+        print('Exporting `primary` channel sonogram...')
+        img = Image.fromarray(image)
+        img.save(f'{self.sonograms_folder}/primary.jpg')
+
+
+    def export_downscan_sonogram(self, image):
+        """
+        Args:
+            image: numpy
+        """
+        print('Exporting `downscan` channel sonogram...')
+        img = Image.fromarray(image)
+        img.save(f'{self.sonograms_folder}/downscan.jpg')
 
     # def create_folder_if_not_exists(self):
     #     project_folder = os.path.join(self.runs_folder, self.project_name)
@@ -118,33 +137,6 @@ class Exporter:
     #     self.export_downscan_image()
     #     self.export_sidescan_image()
 
-
-    # # TODO: move processing to separate file
-    # def process_different_zoom_levels(self, df):
-    #     """Used to resize the `primary` and `downscan` sonar images to match
-    #     the different zoom levels; based on max_range value.
-    #     """
-    #     max_range_value = df['max_range'].max()
-    #     max_range_ratio = np.array(df['max_range'] / max_range_value)
-    #     image = np.stack(df["frames"])
-
-    #     def downsample_row(row, ratio):
-    #         indices = np.linspace(0, len(row)-1, int(len(row) *ratio)).astype(int)
-    #         #indices = np.linspace(0, len(row)-1, int(len(row) * (1 - ratio))).astype(int)
-    #         return row[indices]
-
-    #     # Downsample each row and find the length of the longest row
-    #     # note: this is faster than using img libraries resize as we are always
-    #     # downsampling
-    #     downsampled_rows = [downsample_row(row, ratio) for row, ratio in zip(image, max_range_ratio)]
-    #     max_length = max(len(row) for row in downsampled_rows)
-    #     #max_length = max_frame_size[0]
-
-    #     # Pad the downsampled rows with zeros to match the length of the longest row
-    #     image_resized = np.array([np.pad(row, (0, max_length - len(row)), 'constant') for row in downsampled_rows])
-
-    #     return image_resized.transpose()
-    
 
     # def export_primary_image(self):
     #     image = self.process_different_zoom_levels(self.primary_df)

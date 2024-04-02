@@ -5,6 +5,8 @@ import math
 import numpy as np
 import pandas as pd
 
+from PIL import Image
+
 from .exporter import Exporter
 from .utils import x_to_longitude, y_to_latitude
 
@@ -338,6 +340,11 @@ class Sonar:
     def sidescan_df(self):
         return self.df.query("survey == 'sidescan'")
     
+    def primary_df(self):
+        return self.df.query("survey == 'primary'")
+    
+    def downscan_df(self):
+        return self.df.query("survey == 'downscan'")
 
     def image(self, channel):
         """Extract the raw sonar image for a specific channel as numpy array.
@@ -376,38 +383,7 @@ class Sonar:
         
         return(np.stack(self.df.query(f"survey == '{channel}'")["water_depth"]))
                
-    # def sidescan_xyz(self) -> pd.DataFrame:
-    #     '''Extract georeferenced sidescan data as XYZ coordinates'''
-
-    #     if "sidescan" not in self.valid_channels:
-    #         raise ValueError("No sidescan data found")
-        
-    #     data = self.df.query(f"survey == 'sidescan'")
-    #     dist = [np.linspace(start, stop, num = len(f)) for start, stop, f in zip(data["min_range"], 
-    #                                                                              data["max_range"], 
-    #                                                                              data["frames"])]
-    #     dist_stack = np.stack(dist)
-        
-    #     sidescan_z = self.image("sidescan")            
-
-    #     if self.augment_coords:
-    #         sidescan_x = np.expand_dims(data["x_augmented"], axis=1) + dist_stack * np.cos(np.expand_dims(data["gps_heading"], axis=1))
-    #         sidescan_y = np.expand_dims(data["y_augmented"], axis=1) - dist_stack * np.sin(np.expand_dims(data["gps_heading"], axis=1))
-
-    #     else:
-    #         sidescan_x = np.expand_dims(data["x"], axis=1) + dist_stack * np.cos(np.expand_dims(data["gps_heading"], axis=1))
-    #         sidescan_y = np.expand_dims(data["y"], axis=1) - dist_stack * np.sin(np.expand_dims(data["gps_heading"], axis=1))
-        
-    #     sidescan_df = pd.DataFrame({"x": sidescan_x.ravel(),
-    #                                 "y": sidescan_y.ravel(),
-    #                                 "z": sidescan_z.ravel()})
-
-    #     sidescan_df["longitude"] = x_to_longitude(sidescan_df["x"])
-    #     sidescan_df["latitude"] = y_to_latitude(sidescan_df["y"])
-        
-    #     return sidescan_df
-    
-
+  
     def _interp_water(self, water, depth, out_len):
         x = np.linspace(0, depth, num=out_len)
         xp = np.linspace(0, depth, num=len(water))
@@ -460,19 +436,59 @@ class Sonar:
     
     def csvs(self):
         """EXPORT CSVS"""
-        all_df = self.df
-        primary_df = self.df.query(f"survey == 'primary'")
-        downscan_df = self.df.query(f"survey == 'downscan'")
-        sidescan_df = self.df.query(f"survey == 'sidescan'")
-
-        # Define csv export file names
         # Filename : DataFrame
         csvs = {
-            'all': all_df,
-            'primary': primary_df,
-            'downscan': downscan_df,
-            'sidescan': sidescan_df,
+            'all': self.df,
+            'primary': self.primary_df(),
+            'downscan': self.downscan_df(),
+            'sidescan': self.sidescan_df(),
         }
 
         exporter = Exporter(self.config)
         exporter.export_csvs(csvs)
+
+    
+    def resize_proper_zoom_levels(self, df):
+        """Used to resize the `primary` and `downscan` sonar images to match
+        the different zoom levels; based on max_range value.
+
+        Args:
+            df: `primary` and `downscan` df only
+
+        Returns:
+            numpy array image
+        """
+        max_range_value = df['max_range'].max()
+        max_range_ratio = np.array(df['max_range'] / max_range_value)
+        image = np.stack(df["frames"])
+
+        def downsample_row(row, ratio):
+            indices = np.linspace(0, len(row)-1, int(len(row) * ratio)).astype(int)
+            #indices = np.linspace(0, len(row)-1, int(len(row) * (1 - ratio))).astype(int)
+            return row[indices]
+
+        # Downsample each row and find the length of the longest row
+        # note: this is faster than using img libraries resize as we are always
+        # downsampling
+        downsampled_rows = [downsample_row(row, ratio) for row, ratio in zip(image, max_range_ratio)]
+        max_length = max(len(row) for row in downsampled_rows)
+        #max_length = max_frame_size[0]
+
+        # Pad the downsampled rows with zeros to match the length of the longest row
+        image_resized = np.array([np.pad(row, (0, max_length - len(row)), 'constant') for row in downsampled_rows])
+
+        return image_resized.transpose()
+    
+
+    def primary_image(self):
+        # Primary scan channel sonogram
+        image = self.resize_proper_zoom_levels(self.primary_df())
+        exporter = Exporter(self.config)
+        exporter.export_primary_sonogram(image)
+
+
+    def downscan_image(self):
+        # Down scan channel sonogram
+        image = self.resize_proper_zoom_levels(self.downscan_df())
+        exporter = Exporter(self.config)
+        exporter.export_downscan_sonogram(image)
