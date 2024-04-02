@@ -106,13 +106,12 @@ sl3_frame_dtype = np.dtype([
 ])
 
 class Sonar:
-    '''
-    Class for reading and parsing the content of the Lowrance '.sl2' and '.sl3' file formats used to store sonar data.
+    """Class for reading and parsing the content of the Lowrance '.sl2' and '.sl3' file formats used to store sonar data.
 
-    Arguments:
-    clean = True - (True is default) - Perform basic data cleaning including dropping unknown columns and rows and observation where the water depth is 0.
-    augment_coords = True - (False is default) - Perform coordinate augmentation as implemented in https://github.com/halmaia/SL3Reader.
-    '''
+    Args:
+        clean = True - (True is default) - Perform basic data cleaning including dropping unknown columns and rows and observation where the water depth is 0.
+        augment_coords = True - (False is default) - Perform coordinate augmentation as implemented in https://github.com/halmaia/SL3Reader.
+    """
     
     def __init__(self, 
                  path,
@@ -340,11 +339,14 @@ class Sonar:
     def sidescan_df(self):
         return self.df.query("survey == 'sidescan'")
     
+
     def primary_df(self):
         return self.df.query("survey == 'primary'")
     
+
     def downscan_df(self):
         return self.df.query("survey == 'downscan'")
+
 
     def image(self, channel):
         """Extract the raw sonar image for a specific channel as numpy array.
