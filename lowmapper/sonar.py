@@ -1,11 +1,12 @@
 # Original code by 'sonarlight'.
 # Modified here
 
+import geopandas as gpd
 import math
 import numpy as np
 import pandas as pd
-
 from PIL import Image
+from shapely.geometry import Point
 
 from .exporter import Exporter
 from .utils import x_to_longitude, y_to_latitude
@@ -494,3 +495,23 @@ class Sonar:
         image = self.resize_proper_zoom_levels(self.downscan_df())
         exporter = Exporter(self.config)
         exporter.export_downscan_sonogram(image)
+
+
+    def points_shapefile(self, depth=True):
+        #Extract georeferenced points with depth column
+        # TODO: pass dataframe in the future when
+        # we already have corrections
+        sidescan_df = self.sidescan_df()
+        geometry = [
+            Point(lon, lat) for lon, lat in zip(
+                sidescan_df['longitude'], 
+                sidescan_df['latitude']
+            )
+        ]
+        gdf = gpd.GeoDataFrame(
+            {'depth': sidescan_df['water_depth']},
+            geometry=geometry,
+            crs="EPSG:4326"
+        )
+        exporter = Exporter(self.config)
+        exporter.export_points_shapefile(gdf)

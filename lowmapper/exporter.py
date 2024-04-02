@@ -6,18 +6,18 @@ from PIL import Image
 import rasterio
 from rasterio.transform import from_bounds
 
+import geopandas as gpd
+from shapely.geometry import Point
 
 class Exporter:
     def __init__(self, config):
-        #self.sonar = sonar
-        #self.sonar_df = sonar.df # all_channels
         self.save_path = config['save_path']
         
         if config['filename_as_project_name']:
             self.project_name = Path(config['sonar_path']).stem
         else:
             self.project_name = config['project_name']
-            
+        
         self.csvs_folder = os.path.join(
             self.save_path, 
             self.project_name,
@@ -33,49 +33,30 @@ class Exporter:
             self.project_name,
             'georeferenced'
         )
+        self.shapefiles_folder = os.path.join(
+            self.save_path, 
+            self.project_name,
+            'shapefiles'
+        )
         if not os.path.exists(self.csvs_folder):
             os.makedirs(self.csvs_folder)
         if not os.path.exists(self.sonograms_folder):
             os.makedirs(self.sonograms_folder)
         if not os.path.exists(self.sidescan_folder):
             os.makedirs(self.sidescan_folder)
+        if not os.path.exists(self.shapefiles_folder):
+            os.makedirs(self.shapefiles_folder)
 
-        # self.sub_folders = ['csvs', 'sonograms', 'sidescan']
-        # self.create_folder_if_not_exists()
-
-        # self.primary_df = self.sonar_df.query(f"survey == 'primary'")
-        # self.downscan_df = self.sonar_df.query(f"survey == 'downscan'")
-        # self.sidescan_df = self.sonar_df.query(f"survey == 'sidescan'")
-
-        # Define export paths
-        # self.csv_filenames = {
-        #     'sonar_df': 'all_channels.csv',
-        #     'primary_df': 'primary.csv',
-        #     'downscan_df': 'downscan.csv',
-        #     'sidescan_df': 'sidescan.csv'
-        # }
-
-        # CSVs
-        # self.csv_export_path = os.path.join(
-        #     self.runs_folder, self.project_name, self.sub_folders[0])
-        
-        # # Images (plots, sonograms, etc.)
-        # self.image_export_path = os.path.join(
-        #     self.runs_folder, self.project_name, self.sub_folders[1])
-        
-        # # For side scan images (commonly high res and georeferenced)
-        # self.sidescan_export_path = os.path.join(
-        #     self.runs_folder, self.project_name, self.sub_folders[2])
             
     def export_csvs(self, csvs):
         """
         Example:
             csvs = {
-            'all.csv': all_df,
-            'primary.csv': primary_df,
-            'downscan.csv': downscan_df,
-            'sidescan.csv': sidescan_df,
-        }
+                'all.csv': all_df,
+                'primary.csv': primary_df,
+                'downscan.csv': downscan_df,
+                'sidescan.csv': sidescan_df,
+            }
         """
         print('Exporting csv(s)...')
         for file_name, df in csvs.items():
@@ -139,3 +120,8 @@ class Exporter:
             transform=transform,
         ) as dst:
             dst.write(image_np.transpose(2, 0, 1))
+
+
+    def export_points_shapefile(self, gdf):
+        print('Exporting points shapefile...')
+        gdf.to_file(f'{self.shapefiles_folder}/points.shp')
