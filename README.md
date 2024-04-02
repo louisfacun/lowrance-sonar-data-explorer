@@ -39,3 +39,7 @@ Export georectified WCP (spatially inaccurate due to presence of water column) A
 ![](images/sidescan.png)
 
 ![](images/sidescan2.png)
+
+![](images/points.png)
+
+![](images/bathy_map.png)
