@@ -6,7 +6,7 @@
 2. Run `run_lowmapper.ipynb` via `Run All`.
 3. Folder outputs are at `runs` folder.
 
-# PingMapper Features
+## From PingMapper Features
 
 | Features | Implemented |
 | --- | ----------- |
@@ -22,8 +22,20 @@ Export georectified WCP (spatially inaccurate due to presence of water column) A
 | Automatically segment and classify substrate patches. | *ongoing* |
 
 
-# Added Features
+## Added Features
 | Features | Implemented |
 | - | - |
 | Plot Tracks as shape file | |
 | Plot bathymetry map | |
+
+## Screenshots
+
+![](images/csv.png)
+
+![](images/downscan.png)
+
+![](images/primary.png)
+
+![](images/sidescan.png)
+
+![](images/sidescan2.png)
