@@ -26,7 +26,7 @@ egn_stretch_factor_max: 75 # for percent clip only
 
 # Sonogram tile exports, for sidescan only?
 water_column_present: True
-water_column_removed: True
+water_column_removed: False
 sonogram_img_format: png
 
 # Speed corrected sonogram exports
