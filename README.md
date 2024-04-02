@@ -25,8 +25,8 @@ Export georectified WCP (spatially inaccurate due to presence of water column) A
 ## Added Features
 | Features | Implemented |
 | - | - |
-| Plot Tracks as shape file | |
-| Plot bathymetry map | |
+| Export track points as shapefile with water depth column | **Done** |
+| Export raster bathymetry map | |
 
 ## Screenshots
 
