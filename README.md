@@ -15,7 +15,7 @@
 | Automatically detect depth (i.e. Zheng et al. 2021) and shadows in side scan channels. | - |**Done** (using sensor) |
 | Correct sonar backscatter with Empiracle Gain Normalization. | - | **Done** |
 | Export **un-rectified sonar tiles** with water column present (WCP) AND/OR export un-rectified sonograms with water column removed (WCR) using **Humminbird** depth estimates OR automated depth detections. | term used: sonogram images; **Lowrance** | **Done** (`WCP`); for fixing (`WCR`) |
-| Export speed corrected **un-rectified sonograms**. | term used: sonogram images |  |
+| Export speed corrected **un-rectified sonograms**. | term used: sonogram images |  **Done** (WCP); for fixing (`WCR`) |
 | Smooth and interpolate GPS track points. | - |  |
 Export **georectified** WCP (spatially inaccurate due to presence of water column) AND/OR WCR sonar imagery for use in GIS w/wo shadows removed. | term used: georeferenced | **Done** (`WCP`); for fixing (`WCR`) |
 | Mosaic **georectified** sonar imagery. | term used: georeferenced | |
