@@ -173,7 +173,7 @@ class SideScan:
         # Remove shadows
         if self.config["remove_shadows"]:
             pass
-            #print("Removing shadow on side scan sonogram...")
+            # print("Removing shadow on side scan sonogram...")
 
         # Water column present
         if self.config["water_column_present"]:
@@ -197,10 +197,10 @@ class SideScan:
                 # Apply EGN stretch
                 if self.config["egn_stretch"] is not None:
                     # Apply min-max stretch
-                    
+
                     if self.config["egn_stretch"] == 1:
                         print(f"Applying EGN min-max stretch on {file_name}...")
-                        pass # TODO
+                        pass  # TODO
 
                     # Apply percentile clip stretch
                     elif self.config["egn_stretch"] == 2:
@@ -221,7 +221,7 @@ class SideScan:
 
             # Save
             sonograms[file_name] = image
-        
+
         return sonograms
 
     def sonograms(self):
@@ -326,7 +326,10 @@ class SideScan:
         return image, (min_long, max_long, min_lat, max_lat)
 
     def _add_cum_distance_travelled(self):
+        """Add columns to the dataframe for cumulative distance traveled and distance."""
         # Calculate the time elapsed between consecutive pings
+        self.df = self.df.copy()
+
         self.df["time_elapsed"] = (
             self.df["datetime"] - self.df["datetime"].shift()
         ).fillna(pd.Timedelta(seconds=0))
