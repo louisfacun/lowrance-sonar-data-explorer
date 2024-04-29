@@ -21,7 +21,10 @@ Export **georectified** WCP (spatially inaccurate due to presence of water colum
 | Mosaic **georectified** sonar imagery. | term used: georeferenced | |
 | Automatically segment and classify substrate patches. | - | *ongoing* |
 
+## Notes:
 
+- Adopted [ReefMaster's - 5. Side-scan signal priority](https://reefmaster.com.au/sonar_viewer_reference/index.htm?context=40) : Closest signal on overlapping images in **one** recording session
+  
 ## Added Features
 | Features | Implemented |
 | - | - |
