@@ -6,11 +6,14 @@ import math
 import numpy as np
 import pandas as pd
 from PIL import Image
+import matplotlib.pyplot as plt
+from tqdm import tqdm
+
 from shapely.geometry import Point
 from scipy.interpolate import griddata
 from .exporter import Exporter
 from .utils import x_to_longitude, y_to_latitude
-import matplotlib.pyplot as plt
+
 
 # dtype for '.sl2' files (144 bytes)
 sl2_frame_dtype = np.dtype(
@@ -191,6 +194,8 @@ class Sonar:
             "water_temperature",
             "bottom_index",
             "frames",
+            "seconds",
+            "survey_type",
         ]
 
         self.augment_coords = augment_coords
@@ -304,7 +309,7 @@ class Sonar:
         c = 1.4326
         lim = 1.2
 
-        for i in range(1, len(self.df)):
+        for i in tqdm(range(1, len(self.df))):
             t1 = self.df.loc[i, "seconds"]
             v1 = self.df.loc[i, "gps_speed"]
             d1 = math.tau - self.df.loc[i, "gps_heading"] + (math.pi / 2)
@@ -313,8 +318,8 @@ class Sonar:
             y1 = self.df.loc[i, "y"]
 
             if t1 == t0:
-                self.df.loc[i, "x_augmented"] = x0
-                self.df.loc[i, "y_augmented"] = y0
+                self.df.loc[i, "x"] = x0  # x_augmented
+                self.df.loc[i, "y"] = y0
             else:
                 vx0 = math.cos(d0) * v0
                 vy0 = math.sin(d0) * v0
@@ -346,8 +351,8 @@ class Sonar:
                     if abs(dx) > 50:  # Detect serious errors.
                         x0 = self.df.loc[i, "x"]
 
-                self.df.loc[i, "x_augmented"] = x0
-                self.df.loc[i, "y_augmented"] = y0
+                self.df.loc[i, "x"] = x0  # x_augmented
+                self.df.loc[i, "y"] = y0
 
     def _valid_channels(self):
         found_channels = set(self.df["survey"].tolist())
