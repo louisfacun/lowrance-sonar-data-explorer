@@ -2,36 +2,44 @@
 sonar_path: examples/Sonar_2023-09-12_09.04.57.sl2
 save_path: outputs
 
-filename_as_project_name: True # Use <filename>.sl2 as project name
-project_name: Sonar # If false above
+# Use <filename>.sl2 as project name
+filename_as_project_name: True
 
-#Default !
-#overwrite_project: True # Delete previous project outputs
+# If false above, use this name instead
+project_name: Sonar 
 
-# TODO LAHAT NG NASA BABA PA
-# Saving
-#save_path: saves
-#save_csv: True # Enable saving of ping data to csv
-#save_csv_all: True # Save all channels into one
+# Delete previous project outputs
+# Default for now.
+#overwrite_project: True 
 
-# Position corrections
-transducer_x_offset: 0,0 # Transducer x offset in meters
-transducer_y_offset: 0,0 # Transducer y offset in meters
+# TODO: Enable saving of ping data to csv
+save_csv: True
+
+# TODO: Add additional csv file to save all channels into one
+save_csv_all: True
+
+# TODO: Position corrections (meters)
+transducer_x_offset: 0,0
+transducer_y_offset: 0,0
+
+
+# TODO:
+# Export points shapefile?
 
 # Sonar intensity corrections
 egn: True
-egn_stretch: 2 # None, 1-min-max, 2-percent clip
-egn_stretch_factor_min: 25 # for percent clip only
-egn_stretch_factor_max: 75 # for percent clip only
+egn_stretch: 2 # None, 1) min-max, 2) percent clip
+egn_stretch_factor_min: 10 # for percent clip only
+egn_stretch_factor_max: 90 # for percent clip only
 
-# Sonogram tile exports, for sidescan only?
+# Sonogram images
 water_column_present: True
-water_column_removed: False
-sonogram_img_format: png
+water_column_removed: True
+sonogram_img_format: png # Todo
 
 # Speed corrected sonogram exports
-export_speed_corrected: False
-speed_correction: 0
+export_speed_corrected: True
+speed_correction: False
 
 # Depth detection and shadow removal
 remove_shadows: 0 # 0-false, 1-removeall shadows, 2-remove only bank shadows
@@ -41,7 +49,7 @@ adjust_depth: 0 # in meters, positive=increase,
 plot_bedpicks: 0 # 0-false, 1-true, hmm ano to?
 
 # Exports
-pixel_res: 1 # Meter per pixel
+resolution: .2 # Meter per pixel
 export_georef_sidescan: gtiff # false, gtiff, png
 export_sidescan_substrates_map: True # false, gtiff, png, shapefile?
 

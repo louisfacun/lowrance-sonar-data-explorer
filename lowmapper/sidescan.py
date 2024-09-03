@@ -21,6 +21,35 @@ class SideScan:
         self._preprocess_points()
         self.image = np.stack(self.df["frames"])  # Sidescan image.
         self.config = config
+        self.depths = self.df["water_depth"]
+        self.absolute_range = self.df["max_range"].iloc[0]
+
+    def _slant_correct(self, image):
+        all_corrected = np.zeros((image.shape[0], image.shape[1])).astype(np.float32)
+        horizontal_dist = np.sqrt(self.absolute_range**2 - self.depths**2).astype(int)
+
+        for i in tqdm(range(image.shape[0])):
+            depth = ((self.depths[i] * image.shape[1]) / self.absolute_range).astype(
+                int
+            )
+            corrected = np.full(image.shape[1], np.nan, dtype=np.float32)
+            data_extent = 0
+
+            for j in range(image.shape[1]):
+                if j >= depth:
+                    intensity = image[i, j]
+                    horizontal_dist = int(round(math.sqrt(j**2 - depth**2), 0))
+                    corrected[horizontal_dist] = intensity
+                    data_extent = horizontal_dist
+
+            corrected[data_extent:] = 0
+            valid = ~np.isnan(corrected)
+            corrected[~valid] = np.interp(
+                np.flatnonzero(~valid), np.flatnonzero(valid), corrected[valid]
+            )
+            all_corrected[i] = corrected
+
+        return all_corrected
 
     def _wcr(self, port, starboard):
         """Remove water column from the sidescan image.
@@ -31,153 +60,24 @@ class SideScan:
         Returns:
             numpy.ndarray: Sidescan image with water column removed.
         """
-
-        depths = self.df["water_depth"]
-        absolute_range = self.df["max_range"].iloc[0]
-
-        # STARBOARD
+        # Starboard
         print("Slant correcting starboard...")
-        srcDat = np.zeros((starboard.shape[0], starboard.shape[1])).astype(np.float32)
-        horizontal_dist = np.sqrt(absolute_range**2 - depths**2).astype(int)
+        starboard = self._slant_correct(starboard)
 
-        for i in tqdm(range(starboard.shape[0])):
-            depth = ((depths[i] * starboard.shape[1]) / absolute_range).astype(int)
-            dd = depth**2
-            slant_corrected = np.full(starboard.shape[1], np.nan, dtype=np.float32)
-            dataExtent = 0
-
-            # Iterate each sonar/ping return
-            for j in range(starboard.shape[1]):
-                if j >= depth:
-                    intensity = starboard[i, j]
-                    horizontal_dist = int(round(math.sqrt(j**2 - dd), 0))
-                    slant_corrected[horizontal_dist] = intensity
-                    dataExtent = horizontal_dist
-            slant_corrected[dataExtent:] = 0
-            valid = ~np.isnan(slant_corrected)
-            slant_corrected[~valid] = np.interp(
-                np.flatnonzero(~valid), np.flatnonzero(valid), slant_corrected[valid]
-            )
-            srcDat[i] = slant_corrected
-        starboard_wcr = srcDat
-
-        # PORT
+        # Port
         print("Slant correcting port...")
         port = np.fliplr(port)
+        port = self._slant_correct(port)
+        port = np.fliplr(port)
 
-        srcDat = np.zeros((port.shape[0], port.shape[1])).astype(np.float32)
-        horizontal_dist = np.sqrt(absolute_range**2 - depths**2).astype(int)
+        port = port.astype(np.uint8)
+        starboard = starboard.astype(np.uint8)
 
-        for i in tqdm(range(port.shape[0])):
-            depth = ((depths[i] * port.shape[1]) / absolute_range).astype(int)
-            dd = depth**2
-            slant_corrected = np.full(port.shape[1], np.nan, dtype=np.float32)
-            dataExtent = 0
+        # Fix zero values division bug
+        port[port == 0] = 1
+        starboard[starboard == 0] = 1
 
-            # Iterate each sonar/ping return
-            for j in range(port.shape[1]):
-                if j >= depth:
-                    intensity = port[i, j]
-                    horizontal_dist = int(round(math.sqrt(j**2 - dd), 0))
-                    slant_corrected[horizontal_dist] = intensity
-                    dataExtent = horizontal_dist
-            slant_corrected[dataExtent:] = 0
-            valid = ~np.isnan(slant_corrected)
-            slant_corrected[~valid] = np.interp(
-                np.flatnonzero(~valid), np.flatnonzero(valid), slant_corrected[valid]
-            )
-            srcDat[i] = slant_corrected
-        port_wcr = np.fliplr(srcDat)
-
-        # # Get first row' as all values are same for all rows
-        # absolute_range = self.df["max_range"].iloc[0]
-
-        # if not all(self.df["max_range"] == absolute_range):
-        #     raise ValueError(
-        #         "Values in 'max_range' column are not consistent across all rows."
-        #     )
-
-        # # Assumes port and starboard has same size
-        # # TODO: Check if same size
-        # n_pings = port.shape[0]  # number of pings in a session
-        # n_frame = port.shape[1]  # number of pixel in a frame
-
-        # depths = self.df["water_depth"]
-
-        # # Horizontal distance of max range
-        # horizontal_dist = np.sqrt(absolute_range**2 - depths**2).astype(int)
-
-        # # Get equally spaced distances of horizontal
-        # port_horizontal_dists = np.linspace(
-        #     horizontal_dist, depths, n_frame, axis=1
-        # ).astype(int)
-        # starboard_horizontal_dists = np.linspace(
-        #     depths, horizontal_dist, n_frame, axis=1
-        # ).astype(int)
-
-        # # Convert to horizontal distances to pixel value
-        # port_horizontal_dists = (
-        #     (port_horizontal_dists * n_frame) / absolute_range
-        # ).astype(int)
-        # starboard_horizontal_dists = (
-        #     (starboard_horizontal_dists * n_frame) / absolute_range
-        # ).astype(int)
-
-        # port_wcr = np.zeros((n_pings, n_frame))
-        # starboard_wcr = np.zeros((n_pings, n_frame))
-
-        # for n in range(n_pings):
-        #     port_frame = np.zeros((n_frame))
-        #     starboard_frame = np.zeros((n_frame))
-
-        #     port_horizontals = []
-        #     starboard_horizontals = []
-
-        #     for m in range(n_frame):
-        #         if -port_horizontal_dists[n][m] not in port_horizontals:
-        #             port_frame[m] = port[n][-port_horizontal_dists[n][m]]
-        #             port_horizontals.append(-port_horizontal_dists[n][m])
-
-        #         if not starboard_horizontal_dists[n][m] not in starboard_horizontals:
-        #             starboard_frame[m] = starboard[n][starboard_horizontal_dists[n][m]]
-        #             starboard_horizontals.append(starboard_horizontal_dists[n][m])
-
-        #     port_valid = ~np.isnan(port_frame)
-        #     port_frame[~port_valid] = np.interp(np.flatnonzero(~port_valid), np.flatnonzero(port_valid), port_frame[port_valid])
-
-        #     starboard_valid = ~np.isnan(starboard_frame)
-        #     starboard_frame[~starboard_valid] = np.interp(np.flatnonzero(~starboard_valid), np.flatnonzero(starboard_valid), starboard_frame[starboard_valid])
-
-        #     # convert float values to int of port_frame and starboard_frame
-        #     port_frame = port_frame.astype(int)
-        #     starboard_frame = starboard_frame.astype(int)
-
-        #     port_wcr[n] = port_frame
-        #     starboard_wcr[n] = starboard_frame
-        port_wcr = port_wcr.astype(np.uint8)
-        starboard_wcr = starboard_wcr.astype(np.uint8)
-
-        port_wcr[port_wcr == 0] = 1
-        starboard_wcr[starboard_wcr == 0] = 1
-
-        return port_wcr, starboard_wcr
-
-        # port_depths_px = ((depths * frame_px) / absolute_range).astype(int)
-        # starboard_depths_px = ((depths * frame_px) / absolute_range).astype(int)
-
-        # for i, (port_depth_px, starboard_depth_px) in enumerate(zip(port_depths_px, starboard_depths_px)):
-        #     port_wcr[i] = np.concatenate(
-        #         (
-        #             np.zeros(port_depth_px).astype(int), # black
-        #             port_wcr[i, :-port_depth_px]
-        #         )
-        #     )
-        #     starboard_wcr[i] = np.concatenate(
-        #         (
-        #             starboard_wcr[i, starboard_depth_px:],
-        #             np.zeros((starboard_depth_px)).astype(int) # black
-        #         )
-        #     )
+        return port, starboard
 
     def _port(self):
         """Get port side of the sidescan image.
@@ -303,8 +203,9 @@ class SideScan:
                         pass
 
             # Apply speed correction
-            print(f"Applying speed correction on {file_name}...")
-            image = self._apply_speed_correction(image)
+            if self.config["speed_correction"]:
+                print(f"Applying speed correction on {file_name}...")
+                image = self._apply_speed_correction(image)
 
             # Save
             sonograms[file_name] = image
@@ -321,9 +222,10 @@ class SideScan:
         return sonograms  # to be optionally pass to georeferencing
 
     def georeference(self, sonograms):
-        "export georeferenced"
-        """
-            args: output from sonograms (egned and/or stretched)
+        """export georeferenced
+
+        Args:
+            Output from sonograms (egned and/or stretched)
         """
 
         exporter = Exporter(self.config)
@@ -355,7 +257,8 @@ class SideScan:
                 )
             ]
         )
-        sidescan_z = image  # image is the intensities
+        # Intensities
+        sidescan_z = image
         sidescan_x = np.expand_dims(self.df["x"], axis=1) + distances * np.cos(
             np.expand_dims(self.df["gps_heading"], axis=1)
         )
@@ -364,7 +267,7 @@ class SideScan:
         )
 
         # TODO: utils
-        sidescan_long = x_to_longitude(sidescan_x)
+        sidescan_lon = x_to_longitude(sidescan_x)
         sidescan_lat = y_to_latitude(sidescan_y)
 
         # Used to adjust values to the correct pixel coordinates
@@ -415,6 +318,8 @@ class SideScan:
                 sidescan_z[ping],
                 sidescan_d,
             ):
+                # Check if an image coord has an already assigned value
+                # If yes, check which value is closer to the sonar (by distance)
                 coord = (y, x)
                 if coord not in image_coords or (
                     coord in image_coords and d < image_coords[coord]
@@ -432,8 +337,8 @@ class SideScan:
         image = np.flipud(image)
 
         # Determine the bounds of lat long
-        min_long = np.min(sidescan_long)
-        max_long = np.max(sidescan_long)
+        min_long = np.min(sidescan_lon)
+        max_long = np.max(sidescan_lon)
         min_lat = np.min(sidescan_lat)
         max_lat = np.max(sidescan_lat)
 
